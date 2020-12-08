@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"patrickwthomas.net/groupme-graph/database"
@@ -14,7 +15,7 @@ func main() {
 	database.Init()
 	driver, err := database.NewNeo4j("bolt://localhost:7687", "", "", false)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 
 	g := groupme.NewGroupMe(os.Getenv("GROUPME_ACCESS_TOKEN"))

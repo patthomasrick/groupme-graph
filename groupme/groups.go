@@ -2,6 +2,7 @@ package groupme
 
 import (
 	"fmt"
+	"log"
 
 	"patrickwthomas.net/groupme-graph/database"
 )
@@ -57,7 +58,7 @@ func (g *GroupMe) GroupsIndex(page, perPage int, omitMemberships bool) []Group {
 	}
 	_, err := g.groupMeRequest("GET", "/groups", urlValues, groups)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	return *groups
 }
@@ -67,7 +68,7 @@ func (g *GroupMe) GroupsFormer() []Group {
 	groups := &[]Group{}
 	_, err := g.groupMeRequest("GET", "/groups/former", nil, groups)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	return *groups
 }
@@ -77,7 +78,7 @@ func (g *GroupMe) GroupsShow(groupID string) Group {
 	group := &Group{}
 	_, err := g.groupMeRequest("GET", "/groups/"+groupID, nil, group)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	return *group
 }
@@ -93,7 +94,7 @@ func (g *GroupMe) GroupsCreate(name, description, imageURL string, share bool) G
 	}
 	_, err := g.groupMeRequest("POST", "/groups/create", urlValues, group)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	return *group
 }
@@ -110,7 +111,7 @@ func (g *GroupMe) GroupsUpdate(name, description, imageURL string, officeMode, s
 	}
 	_, err := g.groupMeRequest("POST", "/groups/update", urlValues, group)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	return *group
 }
@@ -119,7 +120,7 @@ func (g *GroupMe) GroupsUpdate(name, description, imageURL string, officeMode, s
 func (g *GroupMe) GroupsDestroy(groupID string) {
 	_, err := g.groupMeRequest("POST", "/groups/"+groupID+"/destroy", nil, nil)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 }
 
@@ -128,7 +129,7 @@ func (g *GroupMe) GroupsJoin(groupID string, shareID string) Group {
 	group := &Group{}
 	_, err := g.groupMeRequest("POST", "/groups/"+groupID+"/join/"+shareID, nil, group)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	return *group
 }
@@ -138,7 +139,7 @@ func (g *GroupMe) GroupsRejoin(groupID string) Group {
 	group := &Group{}
 	_, err := g.groupMeRequest("POST", "/groups/join", nil, group)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	return *group
 }
@@ -152,7 +153,7 @@ func (g *GroupMe) GroupsChangeOwners(groupID, ownerID string) Group {
 	}
 	_, err := g.groupMeRequestPostObject("/groups/change_owners", urlValues, group)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	return *group
 }
@@ -161,14 +162,14 @@ func (g *GroupMe) GroupsChangeOwners(groupID, ownerID string) Group {
 func (g *Group) SaveToNeo4j(driver *database.Neo4j) {
 	session, err := driver.NewWriteSession()
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	defer session.Close()
 
 	result, err := session.Run(fmt.Sprintf("MERGE (n:Group{%s})", Melt(*g)), map[string]interface{}{})
 	e := result.Err()
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	} else if e != nil {
 		// panic(e)
 	}

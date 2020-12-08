@@ -2,6 +2,7 @@ package groupme
 
 import (
 	"fmt"
+	"log"
 
 	"patrickwthomas.net/groupme-graph/database"
 )
@@ -76,7 +77,7 @@ func (g *GroupMe) MessagesIndex(groupID, beforeID, sinceID, afterID string, limi
 
 	_, err := g.groupMeRequest("GET", fmt.Sprintf("/groups/%s/messages", groupID), urlValues, messages)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	return messages.Messages
 }
@@ -85,14 +86,14 @@ func (g *GroupMe) MessagesIndex(groupID, beforeID, sinceID, afterID string, limi
 func (m *Message) SaveToNeo4j(driver *database.Neo4j) {
 	session, err := driver.NewWriteSession()
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	defer session.Close()
 
 	result, err := session.Run(fmt.Sprintf(`MERGE (msg:Message{%s})`, Melt(*m)), map[string]interface{}{})
 	e := result.Err()
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	} else if e != nil {
 		// panic(e)
 	}

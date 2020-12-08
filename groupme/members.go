@@ -2,6 +2,7 @@ package groupme
 
 import (
 	"fmt"
+	"log"
 
 	"patrickwthomas.net/groupme-graph/database"
 )
@@ -42,7 +43,7 @@ func (g *GroupMe) MembersAdd(groupID string, m []AddMember) string {
 	result := &membersAddResult{}
 	_, err := g.groupMeRequestPostObject(fmt.Sprintf("/groups/%s/members/add", groupID), m, result)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	return result.ResultsID
 }
@@ -52,7 +53,7 @@ func (g *GroupMe) MembersResults(groupID string, addResultGUID string) []Member 
 	result := &[]Member{}
 	_, err := g.groupMeRequest("GET", fmt.Sprintf("/groups/%s/members/results/%s", groupID, addResultGUID), nil, result)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	return *result
 }
@@ -61,7 +62,7 @@ func (g *GroupMe) MembersResults(groupID string, addResultGUID string) []Member 
 func (g *GroupMe) MembersRemove(groupID string, membershipID string) {
 	_, err := g.groupMeRequest("POST", fmt.Sprintf("/groups/%s/members/%s/remove", groupID, membershipID), nil, nil)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 }
 
@@ -72,7 +73,7 @@ func (g *GroupMe) MembersUpdate(groupID, nickname string) Member {
 	result := &Member{}
 	_, err := g.groupMeRequestPostObject(fmt.Sprintf("/groups/%s/memberships/update", groupID), values, result)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	return *result
 }
@@ -81,14 +82,14 @@ func (g *GroupMe) MembersUpdate(groupID, nickname string) Member {
 func (m *Member) SaveToNeo4j(driver *database.Neo4j) {
 	session, err := driver.NewWriteSession()
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	defer session.Close()
 
 	result, err := session.Run(fmt.Sprintf("MERGE (n:Member{%s}) ON MATCH SET n.Nickname=\"%s\"", Melt(*m), quoteEscape(m.Nickname)), map[string]interface{}{})
 	e := result.Err()
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	} else if e != nil {
 		// panic(e)
 	}

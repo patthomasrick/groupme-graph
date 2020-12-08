@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -44,7 +45,7 @@ func letterOpener(responseBody []byte, dest interface{}) (meta, error) {
 	unmarshalledResponse := envelope{Meta: meta, Response: dest}
 	err := json.Unmarshal(responseBody, &unmarshalledResponse)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	} else if unmarshalledResponse.Meta.Code/100 != 2 {
 		panic(fmt.Sprintf("Request failed. Code: %d. Message: %v", unmarshalledResponse.Meta.Code, unmarshalledResponse.Meta.Errors))
 	}
@@ -159,7 +160,7 @@ func Melt(v interface{}) string {
 func Connect(driver *database.Neo4j) {
 	session, err := driver.NewWriteSession()
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	defer session.Close()
 
@@ -167,7 +168,7 @@ func Connect(driver *database.Neo4j) {
 	MERGE (m)-[:AUTHORED]->(n)`, map[string]interface{}{})
 	e := result.Err()
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	} else if e != nil {
 		panic(e)
 	}
@@ -176,7 +177,7 @@ func Connect(driver *database.Neo4j) {
 	MERGE (m)-[:HAS_MESSAGE]->(n)`, map[string]interface{}{})
 	e = result.Err()
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	} else if e != nil {
 		panic(e)
 	}
