@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
 )
 
 // Settings holds all of the relevant settings from the application.
@@ -16,6 +17,44 @@ type Settings struct {
 const settingsFileDir = "./settings.json"
 const groupMeAPIUninit = "https://api.groupme.com/v3"
 const accessTokenUninit = "your API token here (get one here: https://dev.groupme.com/)"
+
+var accessTokenPattern = regexp.MustCompile(`[a-f0-9]+`)
+
+// GetGroupMeAPI get the set API.
+func (s *Settings) GetGroupMeAPI() string {
+	return s.GroupMeAPI
+}
+
+// SetGroupMeAPI set the API URL.
+func (s *Settings) SetGroupMeAPI(v string) {
+	s.GroupMeAPI = v
+}
+
+// GetAccessToken get the curent access token.
+func (s *Settings) GetAccessToken() string {
+	return s.AccessToken
+}
+
+// SetAccessToken set the current access token. Can error if not valid.
+func (s *Settings) SetAccessToken(v string) error {
+	tokenMatch := accessTokenPattern.FindString(v)
+	if tokenMatch == "" {
+		return fmt.Errorf("access token is invalid (is not a hexadecimal number, all lowercase)")
+	}
+	s.AccessToken = tokenMatch
+	return nil
+}
+
+// NewSettings allows for the direct creation of a settings object.
+func NewSettings(groupMeAPI, accessToken string) (*Settings, error) {
+	s := new(Settings)
+	s.GroupMeAPI = groupMeAPI
+	s.AccessToken = accessTokenPattern.FindString(accessToken)
+	if len(s.AccessToken) == 0 {
+		return nil, fmt.Errorf("access token is invalid (is not a hexadecimal number, all lowercase)")
+	}
+	return s, nil
+}
 
 // LoadSettings loads configuration for the application from the harddisk.
 func LoadSettings() (*Settings, error) {
@@ -38,6 +77,8 @@ func LoadSettings() (*Settings, error) {
 	} else if s.AccessToken == "" && s.GroupMeAPI == "" {
 		return nil, fmt.Errorf("settings file is empty")
 	}
+
+	// Validate access token.
 
 	return s, nil
 }

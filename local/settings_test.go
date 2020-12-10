@@ -3,6 +3,7 @@ package local
 import (
 	"log"
 	"os"
+	"reflect"
 	"testing"
 )
 
@@ -110,6 +111,8 @@ func TestInitSettingsFileExists(t *testing.T) {
 }
 
 func TestSaveSettings(t *testing.T) {
+	setupTestDir()
+
 	s := Settings{
 		GroupMeAPI:  groupMeAPIUninit,
 		AccessToken: "my access token",
@@ -118,5 +121,75 @@ func TestSaveSettings(t *testing.T) {
 	err := SaveSettings(&s)
 	if err != nil {
 		log.Panic(err)
+	}
+}
+
+func TestNewSettings(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    *Settings
+		wantErr bool
+	}{
+		{
+			name:  "Valid",
+			input: "a",
+			want: &Settings{
+				"a",
+				"a",
+			},
+			wantErr: false,
+		},
+		{
+			name:    "Invalid",
+			input:   "{}!!*@#*(#*(#*(@)))}",
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NewSettings("a", tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewSettings() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NewSettings() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSettings_GetGroupMeAPI_SetGroupMeAPI(t *testing.T) {
+	s := new(Settings)
+	s.SetGroupMeAPI("a")
+	if s.GetGroupMeAPI() != "a" {
+		t.Fail()
+	}
+	s.SetGroupMeAPI("b")
+	if s.GetGroupMeAPI() != "b" {
+		t.Fail()
+	}
+}
+
+func TestSettings_GetAccessToken_SetAccessToken(t *testing.T) {
+	s, _ := NewSettings("a", "deadbeef")
+	if s.GetAccessToken() != "deadbeef" {
+		t.Fail()
+	}
+
+	err := s.SetAccessToken("1010101")
+	if err != nil {
+		t.Fail()
+	}
+
+	if s.GetAccessToken() != "1010101" {
+		t.Fail()
+	}
+
+	err = s.SetAccessToken("{}{}{}@#$@#$(@$)%")
+	if err == nil {
+		t.Fail()
 	}
 }

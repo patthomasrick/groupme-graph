@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -13,12 +12,12 @@ import (
 	"strings"
 
 	"patrickwthomas.net/groupme-graph/database"
+	"patrickwthomas.net/groupme-graph/local"
 )
 
 // GroupMe holds data pertaining to the current GroupMe instance.
 type GroupMe struct {
-	// APIKey is the key used to authenticate through GroupMe.
-	APIKey string
+	settings local.Settings
 }
 
 type meta struct {
@@ -34,10 +33,14 @@ type envelope struct {
 var quotePattern = regexp.MustCompile(`[{,]"[\w_]+":`)
 
 // NewGroupMe creates a new GroupMe manager.
-func NewGroupMe(apiKey string) *GroupMe {
+func NewGroupMe() (*GroupMe, error) {
 	g := new(GroupMe)
-	g.APIKey = apiKey
-	return g
+	s, err := local.LoadSettings()
+	if err != nil {
+		return nil, err
+	}
+	g.settings = *s
+	return g, nil
 }
 
 func letterOpener(responseBody []byte, dest interface{}) (meta, error) {
@@ -45,15 +48,15 @@ func letterOpener(responseBody []byte, dest interface{}) (meta, error) {
 	unmarshalledResponse := envelope{Meta: meta, Response: dest}
 	err := json.Unmarshal(responseBody, &unmarshalledResponse)
 	if err != nil {
-		log.Panic(err)
+		return meta, err
 	} else if unmarshalledResponse.Meta.Code/100 != 2 {
-		panic(fmt.Sprintf("Request failed. Code: %d. Message: %v", unmarshalledResponse.Meta.Code, unmarshalledResponse.Meta.Errors))
+		return meta, fmt.Errorf("%d: %v", unmarshalledResponse.Meta.Code, unmarshalledResponse.Meta.Errors)
 	}
 	return meta, err
 }
 
 func (g *GroupMe) groupMeRequest(method, requestSubDir string, values map[string]string, dest interface{}) (meta, error) {
-	request, err := http.NewRequest(method, GroupMeAPI+requestSubDir, nil)
+	request, err := http.NewRequest(method, g.settings.GroupMeAPI+requestSubDir, nil)
 	if err != nil {
 		return meta{}, err
 	}
@@ -61,7 +64,7 @@ func (g *GroupMe) groupMeRequest(method, requestSubDir string, values map[string
 	// Build the queries and get a response. Could be either GET or POST
 	var response *http.Response
 	query := request.URL.Query()
-	query.Add("token", g.APIKey)
+	query.Add("token", g.settings.AccessToken)
 	if method == "GET" {
 		if values != nil {
 			for k, v := range values {
@@ -96,7 +99,7 @@ func (g *GroupMe) groupMeRequest(method, requestSubDir string, values map[string
 }
 
 func (g *GroupMe) groupMeRequestPostObject(requestSubDir string, values interface{}, dest interface{}) (meta, error) {
-	request, err := http.NewRequest("POST", GroupMeAPI+requestSubDir, nil)
+	request, err := http.NewRequest("POST", g.settings.GroupMeAPI+requestSubDir, nil)
 	if err != nil {
 		return meta{}, err
 	}
@@ -110,7 +113,7 @@ func (g *GroupMe) groupMeRequestPostObject(requestSubDir string, values interfac
 	// Build the queries and get a response. Could be either GET or POST
 	var response *http.Response
 	query := request.URL.Query()
-	query.Add("token", g.APIKey)
+	query.Add("token", g.settings.AccessToken)
 	request.URL.RawQuery = query.Encode()
 	response, err = http.Post(request.URL.String(), "application/json", bytes.NewReader(marshalled))
 	if err != nil {
@@ -156,29 +159,29 @@ func Melt(v interface{}) string {
 	return strings.Join(cypherParts, ", ")
 }
 
-// Connect connects the data in the graph database as best it can.
-func Connect(driver *database.Neo4j) {
+// ConnectData connects the data in the graph database as best it can.
+func ConnectData(driver *database.Neo4j) error {
 	session, err := driver.NewWriteSession()
 	if err != nil {
-		log.Panic(err)
+		return err
 	}
 	defer session.Close()
 
 	result, err := session.Run(`MATCH (m:Member), (n:Message) WHERE n.UserID = m.UserID
 	MERGE (m)-[:AUTHORED]->(n)`, map[string]interface{}{})
-	e := result.Err()
 	if err != nil {
-		log.Panic(err)
-	} else if e != nil {
-		panic(e)
+		return err
+	} else if result.Err() != nil {
+		return result.Err()
 	}
 
 	result, err = session.Run(`MATCH (m:Group), (n:Message) WHERE n.GroupID = m.ID
 	MERGE (m)-[:HAS_MESSAGE]->(n)`, map[string]interface{}{})
-	e = result.Err()
 	if err != nil {
-		log.Panic(err)
-	} else if e != nil {
-		panic(e)
+		return err
+	} else if result.Err() != nil {
+		return result.Err()
 	}
+
+	return nil
 }

@@ -47,7 +47,7 @@ type changeOwner struct {
 }
 
 // GroupsIndex gets the groups index from GroupMe.
-func (g *GroupMe) GroupsIndex(page, perPage int, omitMemberships bool) []Group {
+func (g *GroupMe) GroupsIndex(page, perPage int, omitMemberships bool) ([]Group, error) {
 	groups := &[]Group{}
 	urlValues := map[string]string{
 		"page":     fmt.Sprint(page),
@@ -58,33 +58,33 @@ func (g *GroupMe) GroupsIndex(page, perPage int, omitMemberships bool) []Group {
 	}
 	_, err := g.groupMeRequest("GET", "/groups", urlValues, groups)
 	if err != nil {
-		log.Panic(err)
+		return nil, err
 	}
-	return *groups
+	return *groups, err
 }
 
 // GroupsFormer gets the groups index from GroupMe.
-func (g *GroupMe) GroupsFormer() []Group {
+func (g *GroupMe) GroupsFormer() ([]Group, error) {
 	groups := &[]Group{}
 	_, err := g.groupMeRequest("GET", "/groups/former", nil, groups)
 	if err != nil {
-		log.Panic(err)
+		return nil, err
 	}
-	return *groups
+	return *groups, nil
 }
 
 // GroupsShow shows detail about a single group.
-func (g *GroupMe) GroupsShow(groupID string) Group {
+func (g *GroupMe) GroupsShow(groupID string) (*Group, error) {
 	group := &Group{}
 	_, err := g.groupMeRequest("GET", "/groups/"+groupID, nil, group)
 	if err != nil {
-		log.Panic(err)
+		return nil, err
 	}
-	return *group
+	return group, nil
 }
 
 // GroupsCreate creates a new group.
-func (g *GroupMe) GroupsCreate(name, description, imageURL string, share bool) Group {
+func (g *GroupMe) GroupsCreate(name, description, imageURL string, share bool) (*Group, error) {
 	group := &Group{}
 	urlValues := map[string]string{
 		"name":        name,
@@ -94,13 +94,13 @@ func (g *GroupMe) GroupsCreate(name, description, imageURL string, share bool) G
 	}
 	_, err := g.groupMeRequest("POST", "/groups/create", urlValues, group)
 	if err != nil {
-		log.Panic(err)
+		return nil, err
 	}
-	return *group
+	return group, nil
 }
 
 // GroupsUpdate updates a group's information.
-func (g *GroupMe) GroupsUpdate(name, description, imageURL string, officeMode, share bool) Group {
+func (g *GroupMe) GroupsUpdate(name, description, imageURL string, officeMode, share bool) (*Group, error) {
 	group := &Group{}
 	urlValues := map[string]string{
 		"name":        name,
@@ -113,39 +113,37 @@ func (g *GroupMe) GroupsUpdate(name, description, imageURL string, officeMode, s
 	if err != nil {
 		log.Panic(err)
 	}
-	return *group
+	return group, nil
 }
 
 // GroupsDestroy deletes a group from GroupMe.
-func (g *GroupMe) GroupsDestroy(groupID string) {
+func (g *GroupMe) GroupsDestroy(groupID string) error {
 	_, err := g.groupMeRequest("POST", "/groups/"+groupID+"/destroy", nil, nil)
-	if err != nil {
-		log.Panic(err)
-	}
+	return err
 }
 
 // GroupsJoin updates a group's information.
-func (g *GroupMe) GroupsJoin(groupID string, shareID string) Group {
+func (g *GroupMe) GroupsJoin(groupID string, shareID string) (*Group, error) {
 	group := &Group{}
 	_, err := g.groupMeRequest("POST", "/groups/"+groupID+"/join/"+shareID, nil, group)
 	if err != nil {
 		log.Panic(err)
 	}
-	return *group
+	return group, nil
 }
 
 // GroupsRejoin rejoins a group that the user previously left.
-func (g *GroupMe) GroupsRejoin(groupID string) Group {
+func (g *GroupMe) GroupsRejoin(groupID string) (*Group, error) {
 	group := &Group{}
 	_, err := g.groupMeRequest("POST", "/groups/join", nil, group)
 	if err != nil {
 		log.Panic(err)
 	}
-	return *group
+	return group, nil
 }
 
 // GroupsChangeOwners rejoins a group that the user previously left.
-func (g *GroupMe) GroupsChangeOwners(groupID, ownerID string) Group {
+func (g *GroupMe) GroupsChangeOwners(groupID, ownerID string) (*Group, error) {
 	group := &Group{}
 	urlValues := changeOwner{
 		GroupID: groupID,
@@ -155,7 +153,7 @@ func (g *GroupMe) GroupsChangeOwners(groupID, ownerID string) Group {
 	if err != nil {
 		log.Panic(err)
 	}
-	return *group
+	return group, nil
 }
 
 // SaveToNeo4j saves the current group into the database.
