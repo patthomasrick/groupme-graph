@@ -46,6 +46,13 @@ type changeOwner struct {
 	OwnerID string `json:"owner_id"`
 }
 
+type createGroup struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Share       bool   `json:"share"`
+	ImageURL    string `json:"image_url"`
+}
+
 // GroupsIndex gets the groups index from GroupMe.
 func (g *GroupMe) GroupsIndex(page, perPage int, omitMemberships bool) ([]Group, error) {
 	groups := &[]Group{}
@@ -86,13 +93,14 @@ func (g *GroupMe) GroupsShow(groupID string) (*Group, error) {
 // GroupsCreate creates a new group.
 func (g *GroupMe) GroupsCreate(name, description, imageURL string, share bool) (*Group, error) {
 	group := &Group{}
-	urlValues := map[string]string{
-		"name":        name,
-		"description": description,
-		"image_url":   imageURL,
-		"share":       fmt.Sprint(share),
+	urlValues := createGroup{
+		Name:        name,
+		Description: description,
+		ImageURL:    imageURL,
+		Share:       share,
 	}
-	_, err := g.groupMeRequest("POST", "/groups/create", urlValues, group)
+	// _, err := g.groupMeRequest("POST", "/groups/create", urlValues, group)
+	_, err := g.groupMeRequestPostObject("/groups", urlValues, group)
 	if err != nil {
 		return nil, err
 	}

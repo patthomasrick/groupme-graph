@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -48,6 +49,7 @@ func letterOpener(responseBody []byte, dest interface{}) (meta, error) {
 	unmarshalledResponse := envelope{Meta: meta, Response: dest}
 	err := json.Unmarshal(responseBody, &unmarshalledResponse)
 	if err != nil {
+		log.Println(string(responseBody))
 		return meta, err
 	} else if unmarshalledResponse.Meta.Code/100 != 2 {
 		return meta, fmt.Errorf("%d: %v", unmarshalledResponse.Meta.Code, unmarshalledResponse.Meta.Errors)
@@ -115,7 +117,7 @@ func (g *GroupMe) groupMeRequestPostObject(requestSubDir string, values interfac
 	query := request.URL.Query()
 	query.Add("token", g.settings.AccessToken)
 	request.URL.RawQuery = query.Encode()
-	response, err = http.Post(request.URL.String(), "application/json", bytes.NewReader(marshalled))
+	response, err = http.Post(request.URL.String(), "application/json", bytes.NewBuffer(marshalled))
 	if err != nil {
 		return meta{}, err
 	}
