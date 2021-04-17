@@ -1,6 +1,8 @@
 package groupme
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"sort"
@@ -31,32 +33,12 @@ type Message struct {
 
 // Attachment is the base struct for all attachments. Does nothing on its own.
 type Attachment struct {
-	Type string `json:"type"`
-}
-
-// AttachmentImage is a attachment containing a single image.
-type AttachmentImage struct {
-	Attachment
-	URL string `json:"url"`
-}
-
-// AttachmentLocation contains a location.
-type AttachmentLocation struct {
-	Attachment
-	Lat  string `json:"lat"`
-	Lng  string `json:"lng"`
-	Name string `json:"name"`
-}
-
-// AttachmentSplit is unknown.
-type AttachmentSplit struct {
-	Attachment
-	Token string `json:"token"`
-}
-
-// AttachmentEmoji attaches a GroupMe emoji.
-type AttachmentEmoji struct {
-	Attachment
+	Type        string  `json:"type"`
+	URL         string  `json:"url"`
+	Lat         string  `json:"lat"`
+	Lng         string  `json:"lng"`
+	Name        string  `json:"name"`
+	Token       string  `json:"token"`
 	Placeholder string  `json:"placeholder"`
 	Charmap     [][]int `json:"charmap"`
 }
@@ -77,7 +59,9 @@ func (g *GroupMe) MessagesIndex(groupID, beforeID, sinceID, afterID string, limi
 	}
 
 	_, err := g.groupMeRequest("GET", fmt.Sprintf("/groups/%s/messages", groupID), urlValues, messages)
-	if err != nil {
+	if err != nil && errors.Is(err, err.(*json.SyntaxError)) {
+		// Pass
+	} else if err != nil {
 		log.Panic(err)
 	}
 
@@ -142,5 +126,36 @@ func (m *Message) SaveToNeo4j(driver *database.Neo4j) {
 		log.Panic(err)
 	} else if e != nil {
 		log.Panic(e)
+	}
+
+	for _, a := range m.Attachments {
+		query = `
+			MATCH (m:Message{ID: $ID})
+			MERGE (m)-[:ATTACHMENT]->(a:Attachment{
+				Type: $Type,
+				URL: $URL,
+				Lat: $Lat,
+				Lng: $Lng,
+				Name: $Name,
+				Token: $Token,
+				Placeholder: $Placeholder
+			})
+			`
+		result, err := session.Run(query, map[string]interface{}{
+			"ID":          m.ID,
+			"Type":        a.Type,
+			"URL":         a.URL,
+			"Lat":         a.Lat,
+			"Lng":         a.Lng,
+			"Name":        a.Name,
+			"Token":       a.Token,
+			"Placeholder": a.Placeholder,
+		})
+		e := result.Err()
+		if err != nil {
+			log.Panic(err)
+		} else if e != nil {
+			log.Panic(e)
+		}
 	}
 }
