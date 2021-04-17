@@ -3,6 +3,7 @@ package groupme
 import (
 	"fmt"
 	"log"
+	"sort"
 
 	"patrickwthomas.net/groupme-graph/database"
 )
@@ -79,6 +80,11 @@ func (g *GroupMe) MessagesIndex(groupID, beforeID, sinceID, afterID string, limi
 	if err != nil {
 		log.Panic(err)
 	}
+
+	sort.Slice(messages.Messages, func(i, j int) bool {
+		return messages.Messages[i].CreatedAt < messages.Messages[j].CreatedAt
+	})
+
 	return messages.Messages
 }
 
@@ -90,12 +96,47 @@ func (m *Message) SaveToNeo4j(driver *database.Neo4j) {
 	}
 	defer session.Close()
 
-	result, err := session.Run(fmt.Sprintf(`
-	MERGE (msg:Message{%s})
-	WITH msg
-	MATCH (u:Member{UserID:"%s"})
-	MERGE (u)-[:AUTHORED]->(msg)
-	`, Melt(*m), m.UserID), map[string]interface{}{})
+	query := `
+	MERGE (m:Message{ID: $ID})
+	ON CREATE
+		SET
+			m.ID = $ID,
+			m.SourceGUID = $SourceGUID,
+			m.CreatedAt = $CreatedAt,
+			m.UserID = $UserID,
+			m.GroupID = $GroupID,
+			m.Name = $Name,
+			m.AvatarURL = $AvatarURL,
+			m.Text = $Text,
+			m.System = $System,
+			m.FavoritedBy = $FavoritedBy
+	ON MATCH
+		SET
+			m.FavoritedBy = $FavoritedBy
+	WITH m
+	MATCH (g:Group{ID: $GroupID}), (u:Member{UserID: $UserID})
+	MERGE (g)-[:GROUP_OF]->(m)<-[:AUTHORED]-(u)
+	WITH m
+	UNWIND m.FavoritedBy as favoritedUserID
+	MATCH (u:Member{UserID: favoritedUserID})
+	MERGE (u)-[:FAVORITED]->(m)
+	WITH m
+	MATCH (m2:Message)
+	WHERE m2.CreatedAt < m.CreatedAt AND m2.GroupID = m.GroupID
+	WITH m, m2 ORDER BY m2.CreatedAt DESC LIMIT 1
+	MERGE (m2)-[:REPLIED_BY]->(m)`
+	result, err := session.Run(query, map[string]interface{}{
+		"ID":          m.ID,
+		"SourceGUID":  m.SourceGUID,
+		"CreatedAt":   m.CreatedAt,
+		"UserID":      m.UserID,
+		"GroupID":     m.GroupID,
+		"Name":        m.Name,
+		"AvatarURL":   m.AvatarURL,
+		"Text":        m.Text,
+		"System":      m.System,
+		"FavoritedBy": m.FavoritedBy,
+	})
 	e := result.Err()
 	if err != nil {
 		log.Panic(err)

@@ -8,7 +8,7 @@ import (
 	"patrickwthomas.net/groupme-graph/groupme"
 )
 
-const targetGroupID = "64420461"
+const targetGroupID = "54918510"
 
 func main() {
 	database.Init()
@@ -42,6 +42,4 @@ func main() {
 		m := targetGroupMessages[i]
 		m.SaveToNeo4j(driver)
 	}
-
-	// groupme.Connect(driver)
 }

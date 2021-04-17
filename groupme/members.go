@@ -86,16 +86,40 @@ func (m *Member) SaveToNeo4j(driver *database.Neo4j, group_id string) {
 	}
 	defer session.Close()
 
-	result, err := session.Run(fmt.Sprintf(`
-	MERGE (n:Member{%s}) ON MATCH SET n.Nickname="%s"
-	WITH n
-	MATCH (g:Group{ID:"%s"})
-	MERGE (g)-[:MEMBER]->(n)
-	`,
-		Melt(*m),
-		quoteEscape(m.Nickname),
-		group_id),
-		map[string]interface{}{})
+	query := `
+	MERGE (m:Member{UserID: $UserID})
+	ON CREATE
+		SET
+			m.ID = $ID,
+			m.UserID = $UserID,
+			m.Nickname = $Nickname,
+			m.Muted = $Muted,
+			m.ImageURL = $ImageURL,
+			m.Autokicked = $Autokicked,
+			m.AppInstalled = $AppInstalled,
+			m.GUID = $GUID
+	ON MATCH
+		SET
+			m.Nickname = $Nickname,
+			m.Muted = $Muted,
+			m.ImageURL = $ImageURL,
+			m.Autokicked = $Autokicked,
+			m.AppInstalled = $AppInstalled
+	WITH m
+	MATCH (g:Group{ID:$GroupID})
+	MERGE (g)-[:MEMBER]->(m)
+	`
+	result, err := session.Run(query, map[string]interface{}{
+		"ID":           m.ID,
+		"UserID":       m.UserID,
+		"Nickname":     m.Nickname,
+		"Muted":        m.Muted,
+		"ImageURL":     m.ImageURL,
+		"Autokicked":   m.Autokicked,
+		"AppInstalled": m.AppInstalled,
+		"GUID":         m.GUID,
+		"GroupID":      group_id,
+	})
 	e := result.Err()
 	if err != nil {
 		log.Panic(err)
