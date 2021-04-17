@@ -79,18 +79,27 @@ func (g *GroupMe) MembersUpdate(groupID, nickname string) Member {
 }
 
 // SaveToNeo4j saves the current member into the database.
-func (m *Member) SaveToNeo4j(driver *database.Neo4j) {
+func (m *Member) SaveToNeo4j(driver *database.Neo4j, group_id string) {
 	session, err := driver.NewWriteSession()
 	if err != nil {
 		log.Panic(err)
 	}
 	defer session.Close()
 
-	result, err := session.Run(fmt.Sprintf("MERGE (n:Member{%s}) ON MATCH SET n.Nickname=\"%s\"", Melt(*m), quoteEscape(m.Nickname)), map[string]interface{}{})
+	result, err := session.Run(fmt.Sprintf(`
+	MERGE (n:Member{%s}) ON MATCH SET n.Nickname="%s"
+	WITH n
+	MATCH (g:Group{ID:"%s"})
+	MERGE (g)-[:MEMBER]->(n)
+	`,
+		Melt(*m),
+		quoteEscape(m.Nickname),
+		group_id),
+		map[string]interface{}{})
 	e := result.Err()
 	if err != nil {
 		log.Panic(err)
 	} else if e != nil {
-		// panic(e)
+		log.Panic(e)
 	}
 }

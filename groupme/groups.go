@@ -172,19 +172,46 @@ func (g *Group) SaveToNeo4j(driver *database.Neo4j) {
 	}
 	defer session.Close()
 
-	result, err := session.Run(fmt.Sprintf("MERGE (n:Group{%s})", Melt(*g)), map[string]interface{}{})
+	query := `
+	MERGE (n:Group{ID:$id})
+	ON CREATE
+		SET
+			n.Name = $name,
+			n.Type = $type,
+			n.Description = $description,
+			n.ImageURL = $image_url,
+			n.CreatorUserID = $creator_user_id,
+			n.CreatedAt = $created_at,
+			n.UpdatedAt = $updated_at,
+			n.ShareURL = $share_url
+	ON MATCH
+		SET
+			n.Name = $name,
+			n.UpdatedAt = $updated_at
+	`
+	result, err := session.Run(query, map[string]interface{}{
+		"id":              g.ID,
+		"name":            g.Name,
+		"type":            g.Type,
+		"description":     g.Description,
+		"image_url":       g.ImageURL,
+		"creator_user_id": g.CreatorUserID,
+		"created_at":      g.CreatedAt,
+		"updated_at":      g.UpdatedAt,
+		"share_url":       g.ShareURL,
+	})
 	e := result.Err()
 	if err != nil {
 		log.Panic(err)
 	} else if e != nil {
-		// panic(e)
+		log.Panic(e)
 	}
 
 	session.Close()
 
 	if len(g.Members) > 0 {
 		for _, member := range g.Members {
-			member.SaveToNeo4j(driver)
+			member.SaveToNeo4j(driver, g.ID)
 		}
 	}
 }

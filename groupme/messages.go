@@ -90,11 +90,16 @@ func (m *Message) SaveToNeo4j(driver *database.Neo4j) {
 	}
 	defer session.Close()
 
-	result, err := session.Run(fmt.Sprintf(`MERGE (msg:Message{%s})`, Melt(*m)), map[string]interface{}{})
+	result, err := session.Run(fmt.Sprintf(`
+	MERGE (msg:Message{%s})
+	WITH msg
+	MATCH (u:Member{UserID:"%s"})
+	MERGE (u)-[:AUTHORED]->(msg)
+	`, Melt(*m), m.UserID), map[string]interface{}{})
 	e := result.Err()
 	if err != nil {
 		log.Panic(err)
 	} else if e != nil {
-		// panic(e)
+		log.Panic(e)
 	}
 }
